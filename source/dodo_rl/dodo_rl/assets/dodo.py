@@ -1,0 +1,76 @@
+"""Configuration for the Dodo bipedal robot.
+
+Robot: dodo_daimao
+Joints (8 revolute + 2 fixed soles):
+    hip_left / hip_right             - hip roll   (axis X), effort 27 Nm
+    upper_leg_left / upper_leg_right - hip pitch  (axis Y), effort 27 Nm
+    lower_leg_left / lower_leg_right - knee pitch (axis Y), effort  9 Nm
+    foot_left / foot_right           - ankle      (axis Y), effort  9 Nm
+    foot_sole_left / foot_sole_right - fixed (contact surface)
+
+Total mass: ~4.7 kg
+Approximate standing height: ~0.45 m
+"""
+
+from pathlib import Path
+
+import isaaclab.sim as sim_utils
+from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.assets import ArticulationCfg
+
+# USD path — we reuse the converted USD from the previous team's project.
+# To reconvert from URDF: Isaac Sim → File → Import → URDF → select dodo_daimao.urdf
+_USD_PATH = Path(__file__).resolve().parent / "usd" / "dodo_daimao.usd"
+
+DODO_CFG = ArticulationCfg(
+    spawn=sim_utils.UsdFileCfg(
+        usd_path=str(_USD_PATH),
+        activate_contact_sensors=True,
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            retain_accelerations=False,
+            linear_damping=0.0,
+            angular_damping=0.0,
+            max_linear_velocity=1000.0,
+            max_angular_velocity=1000.0,
+            max_depenetration_velocity=1.0,
+        ),
+        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            enabled_self_collisions=True,
+            solver_position_iteration_count=8,
+            solver_velocity_iteration_count=4,
+        ),
+    ),
+    init_state=ArticulationCfg.InitialStateCfg(
+        # Spawn height: upper_leg(0.199) + lower_leg(0.199) + foot(~0.05) ≈ 0.45m
+        # Add margin so the robot doesn't clip through the ground
+        pos=(0.0, 0.0, 0.50),
+        joint_pos={
+            # Standing pose with slightly bent knees
+            "hip_.*": 0.0,             # hip roll neutral
+            "upper_leg_.*": -0.15,     # hip pitch slightly back
+            "lower_leg_.*": 0.30,      # knee bent
+            "foot_.*": -0.15,          # ankle compensating
+        },
+        joint_vel={".*": 0.0},
+    ),
+    soft_joint_pos_limit_factor=0.9,
+    actuators={
+        "hip_upper": ImplicitActuatorCfg(
+            joint_names_expr=["hip_.*", "upper_leg_.*"],
+            stiffness=32.0,
+            damping=3.0,
+            armature=0.01,
+            effort_limit_sim=27.0,
+            velocity_limit_sim=6.0,
+        ),
+        "lower_foot": ImplicitActuatorCfg(
+            joint_names_expr=["lower_leg_.*", "foot_.*"],
+            stiffness=32.0,
+            damping=3.0,
+            armature=0.01,
+            effort_limit_sim=9.0,
+            velocity_limit_sim=6.0,
+        ),
+    },
+)

@@ -1,0 +1,19 @@
+[package]
+version = "0.1.0"
+category = "isaaclab"
+readme = "README.md"
+title = "Dodo RL"
+author = "Dodo Lab"
+maintainer = "Dodo Lab"
+description = "RL locomotion for Dodo bipedal robot over IsaacLab"
+repository = ""
+keywords = ["dodo", "bipedal", "locomotion", "isaaclab"]
+
+[dependencies]
+"isaaclab" = {}
+"isaaclab_assets" = {}
+"isaaclab_rl" = {}
+"isaaclab_tasks" = {}
+
+[[python.module]]
+name = "dodo_rl"

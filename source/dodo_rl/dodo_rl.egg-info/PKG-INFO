@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: dodo_rl
+Version: 0.1.0
+Summary: RL locomotion for Dodo bipedal robot over IsaacLab
+Home-page: 
+Author: Dodo Lab
+Maintainer: Dodo Lab
+License: BSD-3-Clause
+Keywords: dodo,bipedal,locomotion,isaaclab
+Requires-Python: >=3.10
+Requires-Dist: psutil
+Dynamic: author
+Dynamic: keywords
+Dynamic: license
+Dynamic: maintainer
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
