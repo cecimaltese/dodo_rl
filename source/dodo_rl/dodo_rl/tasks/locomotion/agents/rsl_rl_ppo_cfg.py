@@ -45,3 +45,12 @@ class DodoFlatPPORunnerCfg(DodoRoughPPORunnerCfg):
         self.experiment_name = "dodo_flat"
         self.policy.actor_hidden_dims = [128, 64, 64]
         self.policy.critic_hidden_dims = [128, 64, 64]
+
+
+@configclass
+class DodoStandPPORunnerCfg(DodoFlatPPORunnerCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        # Balance is an easier task than walking — converges fast.
+        self.max_iterations = 1000
+        self.experiment_name = "dodo_stand"
