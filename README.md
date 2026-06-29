@@ -13,7 +13,7 @@ python -m pip install -e ~/dodo_rl/source/dodo_rl
 ## Train
 
 ```bash
-cd ~/IsaacLab
+cd ~/dodo_rl/scripts/rsl_rl
 python ~/dodo_rl/scripts/rsl_rl/train.py --task=Dodo-Velocity-Flat-v0 --num_envs=64
 ```
 

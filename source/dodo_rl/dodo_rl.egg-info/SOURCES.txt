@@ -12,6 +12,7 @@ dodo_rl/assets/dodo.py
 dodo_rl/tasks/__init__.py
 dodo_rl/tasks/locomotion/__init__.py
 dodo_rl/tasks/locomotion/flat_env_cfg.py
+dodo_rl/tasks/locomotion/jump_env_cfg.py
 dodo_rl/tasks/locomotion/rough_env_cfg.py
 dodo_rl/tasks/locomotion/agents/__init__.py
 dodo_rl/tasks/locomotion/agents/rsl_rl_ppo_cfg.py

@@ -1,0 +1,54 @@
+--- git status ---
+On branch main
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   README.md
+	modified:   source/dodo_rl/dodo_rl.egg-info/SOURCES.txt
+	modified:   source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.gitignore
+	scripts/logs/
+	scripts/outputs/
+	scripts/rsl_rl/logs/rsl_rl/dodo_flat/2026-06-01_17-26-13/
+	scripts/rsl_rl/outputs/2026-06-01/17-26-12/
+	scripts/rsl_rl/outputs/2026-06-01/17-28-03/
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/README.md b/README.md
+index 1bd4d6b..1286dd6 100644
+--- a/README.md
++++ b/README.md
+@@ -13,7 +13,7 @@ python -m pip install -e ~/dodo_rl/source/dodo_rl
+ ## Train
+ 
+ ```bash
+-cd ~/IsaacLab
++cd ~/dodo_rl/scripts/rsl_rl
+ python ~/dodo_rl/scripts/rsl_rl/train.py --task=Dodo-Velocity-Flat-v0 --num_envs=64
+ ```
+ 
+diff --git a/source/dodo_rl/dodo_rl.egg-info/SOURCES.txt b/source/dodo_rl/dodo_rl.egg-info/SOURCES.txt
+index 465e969..86b7150 100644
+--- a/source/dodo_rl/dodo_rl.egg-info/SOURCES.txt
++++ b/source/dodo_rl/dodo_rl.egg-info/SOURCES.txt
+@@ -12,6 +12,7 @@ dodo_rl/assets/dodo.py
+ dodo_rl/tasks/__init__.py
+ dodo_rl/tasks/locomotion/__init__.py
+ dodo_rl/tasks/locomotion/flat_env_cfg.py
++dodo_rl/tasks/locomotion/jump_env_cfg.py
+ dodo_rl/tasks/locomotion/rough_env_cfg.py
+ dodo_rl/tasks/locomotion/agents/__init__.py
+ dodo_rl/tasks/locomotion/agents/rsl_rl_ppo_cfg.py
+\ No newline at end of file
+diff --git a/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc b/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc
+index 391d675..e2aa807 100644
+Binary files a/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc and b/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc differ
