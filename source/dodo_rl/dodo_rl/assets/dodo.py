@@ -46,11 +46,15 @@ DODO_CFG = ArticulationCfg(
         # Add margin so the robot doesn't clip through the ground
         pos=(0.0, 0.0, 0.50),
         joint_pos={
-            # Standing pose with slightly bent knees
+            # Bird-like crouch: the knee (lower_leg) folds BACKWARD (negative),
+            # not forward/humanoid. Validated upright in MuJoCo at ~0.44 m base
+            # height. Must stay in sync with rl_env._DEFAULT_POS_PATTERNS — change
+            # both together and retrain (this pose is the policy's action offset
+            # and observation reference).
             "hip_.*": 0.0,             # hip roll neutral
-            "upper_leg_.*": -0.15,     # hip pitch slightly back
-            "lower_leg_.*": 0.30,      # knee bent
-            "foot_.*": -0.15,          # ankle compensating
+            "upper_leg_.*": 0.20,      # hip pitch (thigh forward)
+            "lower_leg_.*": -0.50,     # knee folds backward (bird-like)
+            "foot_.*": 0.30,           # ankle keeps the sole flat
         },
         joint_vel={".*": 0.0},
     ),
