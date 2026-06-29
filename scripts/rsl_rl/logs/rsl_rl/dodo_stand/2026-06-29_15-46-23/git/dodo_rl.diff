@@ -1,0 +1,39 @@
+--- git status ---
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   source/dodo_rl/dodo_rl.egg-info/SOURCES.txt
+	modified:   source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc
+	modified:   source/dodo_rl/dodo_rl/tasks/locomotion/agents/__pycache__/rsl_rl_ppo_cfg.cpython-311.pyc
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	scripts/rsl_rl/logs/rsl_rl/dodo_stand/
+	scripts/rsl_rl/outputs/2026-06-29/
+	source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/stand_env_cfg.cpython-311.pyc
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/source/dodo_rl/dodo_rl.egg-info/SOURCES.txt b/source/dodo_rl/dodo_rl.egg-info/SOURCES.txt
+index 86b7150..7d5832b 100644
+--- a/source/dodo_rl/dodo_rl.egg-info/SOURCES.txt
++++ b/source/dodo_rl/dodo_rl.egg-info/SOURCES.txt
+@@ -14,5 +14,6 @@ dodo_rl/tasks/locomotion/__init__.py
+ dodo_rl/tasks/locomotion/flat_env_cfg.py
+ dodo_rl/tasks/locomotion/jump_env_cfg.py
+ dodo_rl/tasks/locomotion/rough_env_cfg.py
++dodo_rl/tasks/locomotion/stand_env_cfg.py
+ dodo_rl/tasks/locomotion/agents/__init__.py
+ dodo_rl/tasks/locomotion/agents/rsl_rl_ppo_cfg.py
+\ No newline at end of file
+diff --git a/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc b/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc
+index e2aa807..1773a3a 100644
+Binary files a/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc and b/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/source/dodo_rl/dodo_rl/tasks/locomotion/agents/__pycache__/rsl_rl_ppo_cfg.cpython-311.pyc b/source/dodo_rl/dodo_rl/tasks/locomotion/agents/__pycache__/rsl_rl_ppo_cfg.cpython-311.pyc
+index 93d5e83..d0d666a 100644
+Binary files a/source/dodo_rl/dodo_rl/tasks/locomotion/agents/__pycache__/rsl_rl_ppo_cfg.cpython-311.pyc and b/source/dodo_rl/dodo_rl/tasks/locomotion/agents/__pycache__/rsl_rl_ppo_cfg.cpython-311.pyc differ

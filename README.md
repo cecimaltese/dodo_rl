@@ -93,7 +93,7 @@ python train.py --task=Dodo-Velocity-Flat-v0 --num_envs=256 --max_iterations=150
 
 ```bash
 cd ~/IsaacLab
-python ~/dodo_rl/scripts/rsl_rl/train.py --task=Dodo-Velocity-Flat-v0 --num_envs=64
+python ~/dodo_rl/scripts/rsl_rl/play.py --task=Dodo-Velocity-Flat-v0 --num_envs=64
 ```
 
 ### Monitor Training (W&B) [TBC]
