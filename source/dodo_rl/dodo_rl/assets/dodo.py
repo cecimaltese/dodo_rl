@@ -15,7 +15,7 @@ Approximate standing height: ~0.45 m
 from pathlib import Path
 
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.actuators import DelayedPDActuatorCfg
 from isaaclab.assets import ArticulationCfg
 
 # USD path — we reuse the converted USD from the previous team's project.
@@ -59,22 +59,46 @@ DODO_CFG = ArticulationCfg(
         joint_vel={".*": 0.0},
     ),
     soft_joint_pos_limit_factor=0.9,
+    # --- Actuators ---------------------------------------------------------------
+    # DelayedPDActuatorCfg (NOT ImplicitActuatorCfg) for sim-to-sim/sim-to-real
+    # transfer. Two deliberate choices:
+    #   1) EXPLICIT PD. The implicit actuator solves the PD drive *inside* PhysX,
+    #      which behaves differently from the explicit torque PD that MuJoCo
+    #      (sim_env.py) and the real Damiao/ODrive firmware apply. A policy tuned
+    #      to the implicit solver fell over on the sim-to-sim swap. DelayedPD
+    #      computes tau = kp*(q_des - q) - kd*qd in Python and applies it as a
+    #      torque, exactly matching the MuJoCo PD loop -> the two engines now agree.
+    #   2) COMMAND DELAY. min_delay/max_delay buffer the command by 0-4 physics
+    #      steps (sim dt 0.005 s -> 0-20 ms), i.e. up to ~one 50 Hz control cycle of
+    #      comms latency. This is the "action delay" half of the obs/action-delay
+    #      randomization; a fresh delay is sampled every reset.
+    # Gains kp=30, kd=0.5 match the real Damiao hips and the MuJoCo PD (KP/KD in
+    # sim_env.py) — keep all three in sync. effort_limit set both ways so the limit
+    # holds whether the build reads effort_limit or effort_limit_sim.
     actuators={
-        "hip_upper": ImplicitActuatorCfg(
+        "hip_upper": DelayedPDActuatorCfg(
             joint_names_expr=["hip_.*", "upper_leg_.*"],
-            stiffness=32.0,
-            damping=3.0,
+            stiffness=30.0,
+            damping=0.5,
             armature=0.01,
+            effort_limit=27.0,
             effort_limit_sim=27.0,
+            velocity_limit=6.0,
             velocity_limit_sim=6.0,
+            min_delay=0,
+            max_delay=4,
         ),
-        "lower_foot": ImplicitActuatorCfg(
+        "lower_foot": DelayedPDActuatorCfg(
             joint_names_expr=["lower_leg_.*", "foot_.*"],
-            stiffness=32.0,
-            damping=3.0,
+            stiffness=30.0,
+            damping=0.5,
             armature=0.01,
+            effort_limit=9.0,
             effort_limit_sim=9.0,
+            velocity_limit=6.0,
             velocity_limit_sim=6.0,
+            min_delay=0,
+            max_delay=4,
         ),
     },
 )
