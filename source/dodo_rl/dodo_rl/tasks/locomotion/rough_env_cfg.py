@@ -83,6 +83,14 @@ class DodoRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Height scanner on the body (Dodo has no torso_link, base is "body")
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/body"
 
+        # --- Actions: PIN the joint-position action contract ---
+        # The hardware Env (rl_env.py) hardcodes ACTION_SCALE = 0.5 and
+        # use_default_offset = True (target = default_pos + 0.5 * action). Set them
+        # explicitly here instead of relying on the IsaacLab default, so sim and
+        # deployment can never silently diverge if that default ever changes.
+        self.actions.joint_pos.scale = 0.5
+        self.actions.joint_pos.use_default_offset = True
+
         # --- Randomization ---
         self.events.push_robot = None
         self.events.add_base_mass = None

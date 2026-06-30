@@ -155,6 +155,16 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
+    # --- TEMP SANITY CHECK (delete once confirmed) -----------------------------
+    # The hardware POLICY_JOINT_ORDER (rl_env.py) MUST equal this order, or the
+    # deployed policy drives the wrong joints (looks like instant flailing).
+    # Also confirms the 50 Hz contract: step_dt should be 0.02 (= 4 * 0.005).
+    print("[CHECK] joint order :", env.unwrapped.scene["robot"].joint_names)
+    print("[CHECK] step_dt     :", env.unwrapped.step_dt,
+          "| decimation:", env.unwrapped.cfg.decimation,
+          "| sim.dt:", env.unwrapped.cfg.sim.dt)
+    # ---------------------------------------------------------------------------
+
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):
         env = multi_agent_to_single_agent(env)

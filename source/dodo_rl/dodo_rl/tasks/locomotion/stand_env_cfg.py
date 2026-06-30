@@ -17,18 +17,18 @@ Key differences vs DodoFlatEnvCfg
 * Rewards favor staying upright / alive / near the home pose instead of gait.
 * PUSHES: a gentle periodic shove (push_robot) plus a perturbed start pose/velocity
   teach the policy to absorb a disturbance and return to balance.
-* DOMAIN RANDOMIZATION (chosen for sim-to-sim/real transfer): added base mass + COM
-  offset, perturbed reset pose/velocity, observation noise (enable_corruption), and
-  an action/command delay (in the DelayedPDActuatorCfg over in assets/dodo.py).
+* DOMAIN RANDOMIZATION (for robustness / sim-to-real margin): added base mass + COM
+  offset, perturbed reset pose/velocity, and observation noise (enable_corruption).
 
 Why this matters for transfer
 ------------------------------
-The previous "same policy, sim-to-sim" attempt failed because a policy trained
-against one engine's exact dynamics doesn't transfer to another. Two fixes work
-together: (a) assets/dodo.py now uses an EXPLICIT PD actuator with a command delay
-so IsaacLab's actuator matches the MuJoCo PD loop, and (b) the randomization below
-forces the policy to be robust to a *range* of dynamics instead of overfitting to
-one. MuJoCo (and the real robot) then look like just another sample from that range.
+The earlier "same policy, sim-to-sim" failure turned out to be two concrete bugs,
+both now fixed outside this file: (a) a wrong joint order, and (b) MuJoCo adding
+passive joint damping/frictionloss that IsaacLab doesn't have (zeroed in
+sim_env.py). With those fixed, the IMPLICIT actuator (assets/dodo.py) transfers as-is.
+The randomization below is then layered on top for robustness — it forces the policy
+to handle a *range* of dynamics and disturbances rather than overfitting one engine,
+which is what buys margin for the real robot.
 """
 
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -71,18 +71,31 @@ class DodoStandEnvCfg(DodoFlatEnvCfg):
         # Stay upright and don't bob / tip.
         self.rewards.flat_orientation_l2.weight = -2.0
         self.rewards.lin_vel_z_l2.weight = -2.0
-        self.rewards.ang_vel_xy_l2.weight = -0.1
+        # --- Anti-wobble / anti-walk tuning ------------------------------------
+        # Symptom in PLAY: it stays up but WOBBLES (underdamped — partly because
+        # kd=0.5 is intentionally low to match the real motors) and DRIFTS / takes
+        # little STEPS instead of holding one spot. These weights push it toward a
+        # still, planted stance WITHOUT stiffening it so much it can't catch a push.
+        # If it goes sluggish/passive under shoves, dial these back (see
+        # REWARD_TUNING.md). Change ONE at a time when tuning further.
+        self.rewards.ang_vel_xy_l2.weight = -0.25    # was -0.1 : kill base rocking
+        self.rewards.action_rate_l2.weight = -0.05   # was -0.01: smoother, less twitch
+        self.rewards.dof_acc_l2.weight = -2.5e-7     # was -1.25e-7: damp joint jitter
+        # Sharper "hold still": tighter exp kernel => drift is penalized harder.
+        self.rewards.track_lin_vel_xy_exp.params["std"] = 0.25  # was 0.5
+
+        # Plant the feet — stop the sliding/stepping that reads as "walking".
+        self.rewards.feet_slide.weight = -0.5        # was -0.2
+        self.rewards.feet_air_time.weight = 0.0      # no incentive to step at all
+
         # Hold the home pose (penalize deviation of every joint from default).
+        # NOTE: keep this MODEST. Too strong and it rigidly freezes the pose and
+        # can't move to recover from a push.
         self.rewards.joint_deviation_all = RewTerm(
             func=mdp.joint_deviation_l1,
             weight=-0.2,
             params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"])},
         )
-        # Plant the feet (no sliding); kill the gait/air-time incentive.
-        self.rewards.feet_slide.weight = -0.2
-        self.rewards.feet_air_time.weight = 0.0
-        # Keep smoothness / effort penalties modest.
-        self.rewards.action_rate_l2.weight = -0.01
 
         # =====================================================================
         # Events / domain randomization
@@ -153,11 +166,11 @@ class DodoStandEnvCfg(DodoFlatEnvCfg):
                 },
             )
 
-        # --- (4) Action / command delay -> handled in the actuator model -------
-        # assets/dodo.py uses DelayedPDActuatorCfg (explicit PD that matches the
-        # MuJoCo PD loop) with a 0-4 physics-step (0-20 ms, ~one 50 Hz cycle) random
-        # command delay. That is the "action delay" half of obs/action-delay; it
-        # lives on the actuator, not here, so nothing to configure in this file.
+        # --- (4) Obs noise is ON (enable_corruption above) --------------------
+        # Action/command DELAY is intentionally NOT enabled: it needs an explicit-PD
+        # actuator (DelayedPDActuatorCfg), and we're staying on the proven implicit
+        # actuator. Add delay later as a deliberate sim-to-real hardening step (it
+        # requires its own sim-to-sim re-validation). See assets/dodo.py.
 
 
 @configclass
@@ -169,7 +182,9 @@ class DodoStandEnvCfg_PLAY(DodoStandEnvCfg):
         self.episode_length_s = 40.0
         # Clean observations for eyeballing behavior (no training noise).
         self.observations.policy.enable_corruption = False
-        # Keep push_robot ENABLED in PLAY — that's how you eyeball push resistance.
-        # Drop the extra continuous force/torque so the only disturbance you see is
-        # the discrete shove from push_robot.
+        # Pushes OFF in PLAY (training keeps them on). This gives a clean "can it
+        # just stand still?" demo. To eyeball push resistance instead, comment the
+        # next line out and the inherited train-time push_robot stays active.
+        self.events.push_robot = None
+        # Also drop the continuous external force/torque so PLAY is fully quiet.
         self.events.base_external_force_torque = None
