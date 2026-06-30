@@ -1,0 +1,25 @@
+--- git status ---
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   source/dodo_rl/dodo_rl/assets/__pycache__/dodo.cpython-311.pyc
+	modified:   source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	scripts/rsl_rl/logs/rsl_rl/dodo_stand/2026-06-30_14-59-48/
+	scripts/rsl_rl/outputs/2026-06-30/
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/source/dodo_rl/dodo_rl/assets/__pycache__/dodo.cpython-311.pyc b/source/dodo_rl/dodo_rl/assets/__pycache__/dodo.cpython-311.pyc
+index 5ada9c9..748f0ca 100644
+Binary files a/source/dodo_rl/dodo_rl/assets/__pycache__/dodo.cpython-311.pyc and b/source/dodo_rl/dodo_rl/assets/__pycache__/dodo.cpython-311.pyc differ
+diff --git a/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc b/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc
+index 1773a3a..17626a6 100644
+Binary files a/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc and b/source/dodo_rl/dodo_rl/tasks/locomotion/__pycache__/__init__.cpython-311.pyc differ
