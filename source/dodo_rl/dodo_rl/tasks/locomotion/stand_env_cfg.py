@@ -41,6 +41,19 @@ import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from .flat_env_cfg import DodoFlatEnvCfg
 
 
+# --- Curriculum stage --------------------------------------------------------------
+# Bootstrapping a balance policy with ALL disturbances on from iteration 0 tends to
+# stick the mean reward at the termination floor (~ -200 * dt = -4.0): the robot is
+# spawned into states it can't yet recover from, falls immediately every episode, and
+# never learns. So train in two stages:
+#   _STAGE = 0  LEARN TO STAND  — no pushes, near-upright spawn, no mass/COM/noise.
+#               Mean reward should climb POSITIVE and episode length reach the cap.
+#   _STAGE = 1  FULL            — pushes + start perturbation + mass/COM + obs noise
+#               (the push-resistance task). Set this once stage 0 stands, then retrain
+#               or RESUME from the stage-0 checkpoint (resume is faster + more stable).
+_STAGE = 0
+
+
 @configclass
 class DodoStandEnvCfg(DodoFlatEnvCfg):
     def __post_init__(self):
@@ -51,10 +64,9 @@ class DodoStandEnvCfg(DodoFlatEnvCfg):
         self.observations.policy.base_lin_vel = None
         # no velocity command for a pure balance policy.
         self.observations.policy.velocity_commands = None
-        # Keep observation corruption ON during training: the policy must learn to
-        # tolerate the IMU / encoder noise it will see on the real robot (and that a
-        # clean MuJoCo run lacks). This is the "obs noise" half of obs/action noise.
-        self.observations.policy.enable_corruption = True
+        # Obs corruption (IMU/encoder noise) ON only in the FULL stage — clean obs
+        # while it first learns to stand, then noisy for real-robot robustness.
+        self.observations.policy.enable_corruption = (_STAGE >= 1)
 
         # --- Commands: zero everything (track-zero == stand still) ---
         self.commands.base_velocity.ranges.lin_vel_x = (0.0, 0.0)
@@ -81,8 +93,9 @@ class DodoStandEnvCfg(DodoFlatEnvCfg):
         self.rewards.ang_vel_xy_l2.weight = -0.25    # was -0.1 : kill base rocking
         self.rewards.action_rate_l2.weight = -0.05   # was -0.01: smoother, less twitch
         self.rewards.dof_acc_l2.weight = -2.5e-7     # was -1.25e-7: damp joint jitter
-        # Sharper "hold still": tighter exp kernel => drift is penalized harder.
-        self.rewards.track_lin_vel_xy_exp.params["std"] = 0.25  # was 0.5
+        # Sharper "hold still" only in FULL stage (tighter exp kernel penalizes drift
+        # harder). Keep the looser 0.5 while bootstrapping so early reward isn't sparse.
+        self.rewards.track_lin_vel_xy_exp.params["std"] = 0.25 if _STAGE >= 1 else 0.5
 
         # Plant the feet — stop the sliding/stepping that reads as "walking".
         self.rewards.feet_slide.weight = -0.5        # was -0.2
@@ -98,79 +111,88 @@ class DodoStandEnvCfg(DodoFlatEnvCfg):
         )
 
         # =====================================================================
-        # Events / domain randomization
+        # Events / domain randomization  (gated by _STAGE)
         # =====================================================================
 
-        # --- (1) Mild periodic pushes: the core "resist a shove" signal --------
-        # push_by_setting_velocity snaps the base to a random velocity a few times
-        # per episode; the policy has to absorb the kick and recover balance. Kept
-        # GENTLE (per request): small lateral shove + a little yaw spin. Raise the
-        # ranges later (e.g. +/-0.6) once it holds these reliably -> a quick way to
-        # build a push curriculum without touching the rewards.
-        self.events.push_robot = EventTerm(
-            func=mdp.push_by_setting_velocity,
-            mode="interval",
-            interval_range_s=(3.0, 6.0),   # a push every few seconds
-            params={
-                "velocity_range": {
-                    "x": (-0.3, 0.3),      # m/s lateral shove (gentle)
-                    "y": (-0.3, 0.3),
-                    "yaw": (-0.3, 0.3),    # rad/s twist
-                }
-            },
-        )
+        if _STAGE < 1:
+            # ---- STAGE 0: LEARN TO STAND -------------------------------------
+            # Strip every disturbance so the policy can bootstrap a stable stance.
+            # No pushes, near-upright zero-velocity spawn, no mass/COM/noise.
+            self.events.push_robot = None
+            self.events.add_base_mass = None
+            self.events.base_com = None
+            self.events.reset_base.params = {
+                "pose_range": {"x": (-0.05, 0.05), "y": (-0.05, 0.05),
+                               "yaw": (-0.2, 0.2)},
+                "velocity_range": {"x": (0.0, 0.0), "y": (0.0, 0.0), "z": (0.0, 0.0),
+                                   "roll": (0.0, 0.0), "pitch": (0.0, 0.0),
+                                   "yaw": (0.0, 0.0)},
+            }
+            self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
+        else:
+            # ---- STAGE 1: FULL push-resistance + domain randomization --------
 
-        # --- (2) Initial pose / velocity perturbation --------------------------
-        # Start slightly tilted and drifting so the policy LEARNS to recover rather
-        # than only holding a perfect upright pose. Small roll/pitch + base velocity.
-        self.events.reset_base.params = {
-            "pose_range": {
-                "x": (-0.1, 0.1), "y": (-0.1, 0.1),
-                "roll": (-0.1, 0.1), "pitch": (-0.1, 0.1), "yaw": (-0.5, 0.5),
-            },
-            "velocity_range": {
-                "x": (-0.2, 0.2), "y": (-0.2, 0.2), "z": (0.0, 0.0),
-                "roll": (-0.3, 0.3), "pitch": (-0.3, 0.3), "yaw": (-0.3, 0.3),
-            },
-        }
-        # Small per-joint spread around the home pose at reset (~+/-10%), so it also
-        # learns to recover from a slightly off-nominal joint configuration.
-        self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
-
-        # --- (3) Added base mass + COM offset ----------------------------------
-        # The real body carries a battery + cables and its true COM isn't exactly
-        # the model's. Randomize both so balance tolerates a heavier / shifted body.
-        self.events.add_base_mass = EventTerm(
-            func=mdp.randomize_rigid_body_mass,
-            mode="startup",
-            params={
-                "asset_cfg": SceneEntityCfg("robot", body_names="body"),
-                "mass_distribution_params": (-0.3, 0.5),  # kg added (robot ~4.7 kg)
-                "operation": "add",
-            },
-        )
-        # COM randomization: the event function name/signature varies across IsaacLab
-        # versions (it was reworked/removed in some builds), so only wire it up if
-        # this build exposes it — otherwise skip cleanly instead of crashing import.
-        if hasattr(mdp, "randomize_rigid_body_com"):
-            self.events.base_com = EventTerm(
-                func=mdp.randomize_rigid_body_com,
-                mode="startup",
+            # (1) Mild periodic pushes — the core "resist a shove" signal.
+            # push_by_setting_velocity snaps the base to a random velocity a few
+            # times per episode; the policy must absorb the kick and recover.
+            # GENTLE per request; raise the ranges (e.g. +/-0.6) for a harder
+            # push curriculum once it holds these reliably.
+            self.events.push_robot = EventTerm(
+                func=mdp.push_by_setting_velocity,
+                mode="interval",
+                interval_range_s=(3.0, 6.0),
                 params={
-                    "asset_cfg": SceneEntityCfg("robot", body_names="body"),
-                    "com_range": {
-                        "x": (-0.02, 0.02),
-                        "y": (-0.02, 0.02),
-                        "z": (-0.02, 0.02),
-                    },
+                    "velocity_range": {
+                        "x": (-0.3, 0.3),
+                        "y": (-0.3, 0.3),
+                        "yaw": (-0.3, 0.3),
+                    }
                 },
             )
 
-        # --- (4) Obs noise is ON (enable_corruption above) --------------------
-        # Action/command DELAY is intentionally NOT enabled: it needs an explicit-PD
-        # actuator (DelayedPDActuatorCfg), and we're staying on the proven implicit
-        # actuator. Add delay later as a deliberate sim-to-real hardening step (it
-        # requires its own sim-to-sim re-validation). See assets/dodo.py.
+            # (2) Initial pose / velocity perturbation — start slightly tilted and
+            # drifting so it LEARNS to recover, not just hold a perfect pose.
+            self.events.reset_base.params = {
+                "pose_range": {
+                    "x": (-0.1, 0.1), "y": (-0.1, 0.1),
+                    "roll": (-0.1, 0.1), "pitch": (-0.1, 0.1), "yaw": (-0.5, 0.5),
+                },
+                "velocity_range": {
+                    "x": (-0.2, 0.2), "y": (-0.2, 0.2), "z": (0.0, 0.0),
+                    "roll": (-0.3, 0.3), "pitch": (-0.3, 0.3), "yaw": (-0.3, 0.3),
+                },
+            }
+            self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
+
+            # (3) Added base mass + COM offset — battery/cables + imperfect COM.
+            self.events.add_base_mass = EventTerm(
+                func=mdp.randomize_rigid_body_mass,
+                mode="startup",
+                params={
+                    "asset_cfg": SceneEntityCfg("robot", body_names="body"),
+                    "mass_distribution_params": (-0.3, 0.5),  # kg (robot ~4.7 kg)
+                    "operation": "add",
+                },
+            )
+            # COM event name/signature varies across IsaacLab versions; only wire it
+            # up if this build exposes it, else skip cleanly instead of crashing.
+            if hasattr(mdp, "randomize_rigid_body_com"):
+                self.events.base_com = EventTerm(
+                    func=mdp.randomize_rigid_body_com,
+                    mode="startup",
+                    params={
+                        "asset_cfg": SceneEntityCfg("robot", body_names="body"),
+                        "com_range": {
+                            "x": (-0.02, 0.02),
+                            "y": (-0.02, 0.02),
+                            "z": (-0.02, 0.02),
+                        },
+                    },
+                )
+
+            # (4) Obs noise is ON via enable_corruption above. Action/command DELAY
+            # stays OFF (needs an explicit-PD actuator; we're on implicit). Add it
+            # later as a deliberate sim-to-real step. See assets/dodo.py.
 
 
 @configclass
