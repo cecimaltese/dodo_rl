@@ -122,26 +122,35 @@ Metrics are tracked automatically during training — check your W&B dashboard f
 dodo_rl/
 ├── scripts/rsl_rl/
 │   ├── train.py              # Training script (extends IsaacLab's rsl_rl trainer)
-│   ├── play.py               # Evaluation / visualization
-│   └── cli_args.py           # CLI argument helpers
+│   ├── play.py               # Evaluation / visualization; also exports policy.onnx
+│   ├── cli_args.py           # CLI argument helpers
+│   └── logs/rsl_rl/<task>/<timestamp>/   # Training runs: checkpoints, exported/policy.onnx,
+│                             #   and params/env.yaml (ground-truth trained config)
 ├── source/dodo_rl/
-│   ├── setup.py
+│   ├── setup.py              # Editable-install packaging (pip install -e .)
 │   ├── pyproject.toml
-│   ├── config/extension.toml
+│   ├── config/extension.toml # Package metadata (name/version/author)
 │   └── dodo_rl/
 │       ├── __init__.py
 │       ├── assets/
-│       │   ├── dodo.py       # DODO_CFG — robot articulation config
+│       │   ├── dodo.py       # DODO_CFG — robot articulation + actuator config (kp/kd, limits)
 │       │   └── usd/          # USD model + configuration files
 │       └── tasks/
 │           └── locomotion/
-│               ├── __init__.py          # gym.register() calls
-│               ├── rough_env_cfg.py     # Base env (rough terrain)
-│               ├── flat_env_cfg.py      # Flat terrain variant
+│               ├── __init__.py          # gym.register() calls for all tasks
+│               ├── rough_env_cfg.py     # Base env (rough terrain, walking)
+│               ├── flat_env_cfg.py      # Flat terrain variant (walking)
+│               ├── stand_env_cfg.py     # Stand-and-balance env (no base_lin_vel/commands) — DEPLOY TARGET
+│               ├── jump_env_cfg.py      # Jump/acrobatics env variant
 │               └── agents/
-│                   └── rsl_rl_ppo_cfg.py  # PPO hyperparameters
+│                   └── rsl_rl_ppo_cfg.py  # PPO hyperparameters (per task)
+├── REWARD_TUNING.md          # Notes on reward shaping / tuning
 └── README.md                 # You are here :)
 ```
+
+> Deployment note: the trained config that the hardware must match is dumped per run at
+> `scripts/rsl_rl/logs/rsl_rl/<task>/<timestamp>/params/env.yaml` (actuator kp/kd, action
+> scale, default pose, observation layout). The MuJoCo/real backends read against it.
 
 ### Architecture in One Sentence
 
